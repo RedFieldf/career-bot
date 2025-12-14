@@ -78,10 +78,11 @@ def generate_image_prompt(industry, tweet_text):
     {industry}
 
     【制約】
-    - 英語で出力すること。
-    - "A high quality illustration of..." から始める。
-    - 人物はシルエットや後ろ姿など、抽象的にする（顔の崩れを防ぐため）。
-    - ビジネス、未来的、洗練された、サイバーパンク、ミニマリズムなどの要素を入れる。
+- 英語で出力すること。
+    - "A bright, clean, photograph-style illustration of..." から始める。（明るく清潔な写真風イラスト）
+    - 「温かい自然光(warm natural light streaming through windows)」「現代的で開放的なオフィス(modern open-plan office with plants and wood furniture)」「高揚感のあるポジティブな雰囲気(uplifting and positive atmosphere)」という要素を必ず入れる。
+    - 人物は「多様なチームが協力している後ろ姿やシルエット」で表現し、顔は具体的に描かないが、姿勢はポジティブにする。
+    - 業界を象徴するアイテム（例：食品なら新鮮な食材、建設なら洗練された模型）を、おしゃれなインテリアの一部として自然に配置する。
     - 出力はプロンプトの英文のみにする。
     """
     response = model.generate_content(prompt)
@@ -179,3 +180,4 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"予期せぬエラー: {e}")
     print("---処理終了---")
+
