@@ -50,6 +50,7 @@ TOPICS = [
 # ---------------------------------------------------------
 def generate_tweet_content():
     genai.configure(api_key=GEMINI_API_KEY)
+    # モデル名は適宜利用可能なものに合わせてください
     model = genai.GenerativeModel("gemini-2.5-flash")
 
     target_industry = random.choice(INDUSTRIES)
@@ -77,7 +78,7 @@ def generate_tweet_content():
     return response.text.strip()
 
 # ---------------------------------------------------------
-# 4. Xに投稿＆リプライ（スレッド作成）
+# 4. Xに投稿（メインツイートのみ）
 # ---------------------------------------------------------
 def post_to_x(content):
     client = tweepy.Client(
@@ -87,26 +88,12 @@ def post_to_x(content):
         access_token_secret=X_ACCESS_TOKEN_SECRET
     )
 
-    # 固定の宣伝文言
-    reply_text = """
-    我々ジリツは納得内定獲得に向けたご支援をしております。
-    👇無料相談はこちらから👇
-    https://www.jicoo.com/t/dX0f4ah7ZNbn/e/jiritsu?utm_source=twitter
-    """
-    
     try:
-        # 1. まずメインのツイートを投稿
+        # メインのツイートのみ投稿
         response = client.create_tweet(text=content)
         tweet_id = response.data['id']
-        print(f"メイン投稿成功！ ID: {tweet_id}")
+        print(f"投稿成功！ ID: {tweet_id}")
         print(f"内容: {content}")
-
-        # 2. そのツイートにぶら下げる形で宣伝を投稿
-        response_reply = client.create_tweet(
-            text=reply_text.strip(),
-            in_reply_to_tweet_id=tweet_id
-        )
-        print(f"宣伝リプライ成功！ ID: {response_reply.data['id']}")
 
     except Exception as e:
         print(f"投稿エラー: {e}")
