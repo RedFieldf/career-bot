@@ -2,8 +2,6 @@ import os
 import tweepy
 import google.generativeai as genai
 import random
-import requests
-import io
 
 # ---------------------------------------------------------
 # 1. 環境変数
@@ -50,7 +48,7 @@ model = genai.GenerativeModel("gemini-2.5-flash")
 # ---------------------------------------------------------
 def generate_tweet_text(industry, topic):
     prompt = f"""
-    あなたは「戦略的キャリアコーチ（ジリツ運営）」です。
+    あなたは「戦略的キャリアコーチ」です。
     【対象業界】{industry} の 【テーマ】{topic} について、
     就活生（26卒・27卒・28卒）に向けた有益なツイートを作成してください。
 
@@ -61,66 +59,21 @@ def generate_tweet_text(industry, topic):
     4. 文字数はハッシュタグ込みで135文字以内。
     5. 最後に必ず #就活 #26卒 #27卒 #28卒 をつける。
     """
-    response = model.generate_content(prompt)
-    return response.text.strip()
-
-# ---------------------------------------------------------
-# 5. 画像生成用の「英語の指示」を作る関数
-# ---------------------------------------------------------
-def generate_image_prompt(industry, tweet_text):
-    prompt = f"""
-    以下のツイート内容を補完する、抽象的でクールなビジネス画像のプロンプト（指示文）を英語で作成してください。
-
-    【ツイート内容】
-    {tweet_text}
-
-    【業界】
-    {industry}
-
-    【制約】
-- 英語で出力すること。
-    - "A bright, clean, photograph-style illustration of..." から始める。（明るく清潔な写真風イラスト）
-    - 「温かい自然光(warm natural light streaming through windows)」「現代的で開放的なオフィス(modern open-plan office with plants and wood furniture)」「高揚感のあるポジティブな雰囲気(uplifting and positive atmosphere)」という要素を必ず入れる。
-    - 人物は「多様なチームが協力している後ろ姿やシルエット」で表現し、顔は具体的に描かないが、姿勢はポジティブにする。
-    - 業界を象徴するアイテム（例：食品なら新鮮な食材、建設なら洗練された模型）を、おしゃれなインテリアの一部として自然に配置する。
-    - 出力はプロンプトの英文のみにする。
-    """
-    response = model.generate_content(prompt)
-    return response.text.strip()
-
-# ---------------------------------------------------------
-# 6. 画像を生成してダウンロードする関数（Pollinations使用）
-# ---------------------------------------------------------
-def generate_and_download_image(image_prompt):
-    # Pollinations.aiという無料APIを使います（登録不要）
-    # プロンプトをURLに埋め込むだけで画像が生成されます
-    base_url = "https://image.pollinations.ai/prompt/"
-    # 日本語などが混じるとエラーになるのでURLエンコード等はrequestsがやってくれますが、念のためシンプルに
-    seed = random.randint(0, 10000) # 毎回違う画像にする
-    
-    # URLを作成 (widthとheightを指定)
-    url = f"{base_url}{image_prompt}?width=1080&height=1080&seed={seed}&nologo=true&model=flux"
-    
-    print(f"画像生成中...: {url}")
-    response = requests.get(url)
-    
-    if response.status_code == 200:
-        return io.BytesIO(response.content) # 画像データをメモリ上に保存
-    else:
-        print("画像生成に失敗しました")
+    try:
+        response = model.generate_content(prompt)
+        return response.text.strip()
+    except Exception as e:
+        print(f"Gemini生成エラー: {e}")
         return None
-
+        
 # ---------------------------------------------------------
-# 7. Xに投稿する（画像添付あり）
+# 5. 投稿関数 (テキストのみ)
 # ---------------------------------------------------------
-def post_with_image(text, image_data):
-    # API v1.1 (画像アップロード用)
-    auth = tweepy.OAuth1UserHandler(
-        X_API_KEY, X_API_SECRET, X_ACCESS_TOKEN, X_ACCESS_TOKEN_SECRET
-    )
-    api = tweepy.API(auth)
+def post_tweet(text):
+    if not text:
+        return
 
-    # API v2 (ツイート投稿用)
+    # テキスト投稿は Client (API v2) だけでOK
     client = tweepy.Client(
         consumer_key=X_API_KEY,
         consumer_secret=X_API_SECRET,
@@ -128,27 +81,10 @@ def post_with_image(text, image_data):
         access_token_secret=X_ACCESS_TOKEN_SECRET
     )
 
-    # ※ここにあった reply_text の定義を削除しました
-
     try:
-        media_id = None
-        if image_data:
-            # 1. 画像をアップロード (v1.1を使用)
-            media = api.media_upload(filename="image.jpg", file=image_data)
-            media_id = media.media_id
-            print("画像アップロード成功")
-
-        # 2. ツイート投稿 (画像IDを紐付け)
-        if media_id:
-            response = client.create_tweet(text=text, media_ids=[media_id])
-        else:
-            response = client.create_tweet(text=text) # 画像なしの場合
-            
-        tweet_id = response.data['id']
-        print(f"メイン投稿成功！ ID: {tweet_id}")
-
-        # ※ここにあった「3. 宣伝リプライ」の処理を削除しました
-
+        response = client.create_tweet(text=text)
+        print(f"投稿成功！ ID: {response.data['id']}")
+        print(f"内容:\n{text}")
     except Exception as e:
         print(f"投稿エラー: {e}")
 
@@ -157,27 +93,14 @@ def post_with_image(text, image_data):
 # ---------------------------------------------------------
 if __name__ == "__main__":
     print("---処理開始---")
-    try:
-        # 1. ネタ決め
-        industry = random.choice(INDUSTRIES)
-        topic = random.choice(TOPICS)
-        print(f"今日のテーマ: {industry} × {topic}")
+    
+    # ネタ決め
+    industry = random.choice(INDUSTRIES)
+    topic = random.choice(TOPICS)
+    print(f"今日のテーマ: {industry} × {topic}")
 
-        # 2. ツイート文章生成
-        tweet_text = generate_tweet_text(industry, topic)
-        print("ツイート生成完了")
+    # 生成と投稿
+    tweet_text = generate_tweet_text(industry, topic)
+    post_tweet(tweet_text)
 
-        # 3. 画像プロンプト生成
-        img_prompt = generate_image_prompt(industry, tweet_text)
-        print(f"画像指示: {img_prompt}")
-
-        # 4. 画像生成 (無料API)
-        image_data = generate_and_download_image(img_prompt)
-
-        # 5. 投稿
-        post_with_image(tweet_text, image_data)
-
-    except Exception as e:
-        print(f"予期せぬエラー: {e}")
     print("---処理終了---")
-
